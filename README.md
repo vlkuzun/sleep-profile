@@ -1,2 +1,4 @@
-# sleep_profile
-Code for analysing summary wake and sleep profile using manual and somno scoring
+# sleep-profile
+Code for analysing vigilance state profile using manual and automated somnotate scoring in baseline Harris lab settings
+
+Utilising this analysis to plot summary statistics of vigilance state profile
