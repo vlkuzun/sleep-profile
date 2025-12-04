@@ -6,6 +6,22 @@ from datetime import datetime, timedelta
 from scipy.signal import butter, filtfilt
 import pandas as pd
 
+# Set global style for publication
+plt.rcParams.update({
+    'font.family': 'Arial',         # Use Arial (or Helvetica as fallback)
+    'font.size': 10,                # General font size
+    'axes.labelsize': 12,           # Axis label size
+    'axes.titlesize': 12,           # Title size
+    'xtick.labelsize': 10,          # X tick label size
+    'ytick.labelsize': 10,          # Y tick label size
+    'legend.fontsize': 10,          # Legend text size
+    'figure.dpi': 300,              # High-res output
+    'savefig.dpi': 600,             # High-res when saving
+    'axes.linewidth': 1,            # Thinner axis borders
+    'pdf.fonttype': 42,             # Embed fonts properly in PDFs
+    'ps.fonttype': 42
+})
+
 class EEGRecording:
     def __init__(self, eeg_data, recording_start_time, fs=512):
         self.data = eeg_data
@@ -104,12 +120,12 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     # Filter and normalize
     mask = (f >= 1) & (f <= 64)
     power_db = 10 * np.log10(Sxx[mask])
-    vmin = np.percentile(power_db, 0.1)  # More extreme minimum
-    vmax = np.percentile(power_db, 99.9)  # More extreme maximum
+    vmin = np.percentile(power_db, 0.01)  # More extreme minimum
+    vmax = np.percentile(power_db, 99.99)  # More extreme maximum
     
     plt.sca(ax1)
     plt.pcolormesh(t, f[mask], power_db,
-                   cmap='jet',          # Changed to jet for better contrast
+                   cmap='inferno',      # Use 'inferno' colormap for spectrogram
                    shading='gouraud',
                    vmin=vmin,
                    vmax=vmax)
@@ -199,17 +215,25 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     
     # Save figure if path is provided
     if save_path:
-        plt.savefig(save_path, dpi=600)
+        # Save as PNG
+        plt.savefig(save_path, dpi=600, bbox_inches='tight')
+        
+        # Save as PDF (replace .png extension with .pdf)
+        if save_path.endswith('.png'):
+            pdf_path = save_path.replace('.png', '.pdf')
+        else:
+            pdf_path = save_path + '.pdf'
+        plt.savefig(pdf_path, format='pdf', bbox_inches='tight')
     
     plt.show()
 
 # Example usage
 combined_plot(
-    pickle_path='Z:/somnotate/to_score_set/pickle_eeg_signal/eeg_data_sub-016_ses-02_recording-01.pkl',
+    pickle_path='/Volumes/harris/somnotate/to_score_set/pickle_eeg_signal/eeg_data_sub-016_ses-02_recording-01.pkl',
     recording_start_time='2024-11-29 13:29:18',
     segment_start_time='2024-11-30 11:30:00',
     duration_mins=90,
     ratio_lowcut1=5, ratio_highcut1=10,
     ratio_lowcut2=1, ratio_highcut2=4,
-    save_path='Z:/volkan/sleep_profile/plots/spectrogram_power_emg_eeg/spectrogram_power_emg_eeg_combined_plot_sub-016_ZT2.5-4_ratio_t_d.png'  # Add save path
+    save_path='/Volumes/harris/volkan/sleep-profile/plots/spectrogram_power_emg_eeg/spectrogram_power_emg_eeg_combined_plot_sub-016_ZT2.5-4_ratio_t_d.png'  # Add save path
 )
