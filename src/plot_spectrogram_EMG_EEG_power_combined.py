@@ -82,32 +82,23 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     end_idx = start_idx + int(duration_mins * 60 * fs)
     emg_segment = emg_data[start_idx:end_idx]
     
-    # Create figure with subplots with adjusted height ratios
-    fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6, 1, figsize=(16, 5.5),  # Back to original height
-                                                       gridspec_kw={'height_ratios': [2, 1, 1, 1, 1, 1.2]},
-                                                       sharex=True)
+    # Create figure with GridSpec spacer between spectrogram and power plots
+    fig = plt.figure(figsize=(16, 5.5))
+    gs = fig.add_gridspec(7, 1,
+                          height_ratios=[2, 0.3, 1, 1, 1, 1, 1.2],
+                          hspace=0.03)
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[2], sharex=ax1)
+    ax3 = fig.add_subplot(gs[3], sharex=ax1)
+    ax4 = fig.add_subplot(gs[4], sharex=ax1)
+    ax5 = fig.add_subplot(gs[5], sharex=ax1)
+    ax6 = fig.add_subplot(gs[6], sharex=ax1)
     
-    # Set initial figure margins
-    plt.subplots_adjust(left=0.13,
-                       right=0.98, 
-                       top=0.92, 
-                       bottom=0.05,  # Increased bottom margin from 0.05 to 0.08
-                       hspace=0)
-    
-    # Adjust positions of all subplots with more spacing and reduced heights
-    pos_ax1 = ax1.get_position()
-    spectrogram_height = pos_ax1.height * 0.80  # Reduced from 0.85
-    ax1.set_position([pos_ax1.x0, pos_ax1.y0 + 0.05,
-                     pos_ax1.width, spectrogram_height])
-    
-    # Move and resize power plots with reduced height
-    baseline_y = pos_ax1.y0 - 0.18  # Keep the increased gap
-    plot_height = spectrogram_height * 0.45  # Reduced from 0.5 (slightly smaller than half)
-    spacing = 0.02
-    
-    for i, ax in enumerate([ax2, ax3, ax4, ax5, ax6]):
-        new_y = baseline_y - (i * (plot_height + spacing))
-        ax.set_position([pos_ax1.x0, new_y, pos_ax1.width, plot_height])
+    # Set figure margins while preserving the new gap
+    fig.subplots_adjust(left=0.13,
+                        right=0.98,
+                        top=0.97,
+                        bottom=0.05)
 
     # Spectrogram (top)
     nperseg = 512 * 2  # 2-second windows
@@ -131,7 +122,7 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
                    vmax=vmax)
     plt.yscale('log')
     plt.yticks([1, 4, 16, 64], ['1', '4', '16', '64'], fontsize=17)
-    ax1.set_ylabel('Frequency (Hz)', fontsize=17)  # Removed labelpad
+    ax1.set_ylabel('Frequency\n(Hz)', fontsize=17)  # Removed labelpad
     ax1.set_ylim(1, 64)
     ax1.yaxis.set_minor_locator(plt.NullLocator())  # Remove minor ticks
     
