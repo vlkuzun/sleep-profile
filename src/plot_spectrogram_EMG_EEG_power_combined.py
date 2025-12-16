@@ -116,13 +116,13 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     
     plt.sca(ax1)
     plt.pcolormesh(t, f[mask], power_db,
-                   cmap='inferno',      # Use 'inferno' colormap for spectrogram
+                   cmap='viridis',      # Use viridis colormap for spectrogram
                    shading='gouraud',
                    vmin=vmin,
                    vmax=vmax)
     plt.yscale('log')
     plt.yticks([1, 4, 16, 64], ['1', '4', '16', '64'], fontsize=17)
-    ax1.set_ylabel('Frequency\n(Hz)', fontsize=17)  # Removed labelpad
+    ax1.set_ylabel('Frequency (Hz)', fontsize=17)
     ax1.set_ylim(1, 64)
     ax1.yaxis.set_minor_locator(plt.NullLocator())  # Remove minor ticks
     
