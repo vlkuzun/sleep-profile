@@ -1,7 +1,28 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_sleep_stages(csv_file, start_time, end_time):
+# File: /Users/Volkan/Repos/sleep-profile/src/plot_bar_state_rows.py
+
+# Default output location for saved plots
+DEFAULT_SAVE_PATH = '/Volumes/harris/volkan/sleep-profile/plots/state_rows/sleep_stage_rows.png'
+
+# Set global style for publication consistency
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+})
+
+def plot_sleep_stages(csv_file, start_time, end_time, save_path=None):
     # Read and process CSV
     df = pd.read_csv(csv_file)
     if 'sleepStage' not in df.columns or 'Timestamp' not in df.columns:
@@ -36,17 +57,16 @@ def plot_sleep_stages(csv_file, start_time, end_time):
     
     # Plot with compressed y-axis spacing
     fig, ax = plt.subplots(figsize=(16, 1))
+    colors = {
+        1: '#E69F00',   # Golden yellow for WAKE
+        1.5: '#D55E00', # Red hue for microarousals
+        2: '#56B4E9',   # Sky blue for non-REM
+        3: '#CC79A7',   # Pink/magenta for REM
+    }
     y_pos = 0
     total_length = 0
     for _, row in stage_info.iterrows():
-        if row['plot_stage'] == 1:
-            color = 'red'
-        elif row['plot_stage'] == 1.5:
-            color = 'orange'
-        elif row['plot_stage'] == 2:
-            color = 'blue'
-        else:  # stage 3
-            color = 'green'
+        color = colors.get(row['plot_stage'], '#999999')
             
         ax.broken_barh([(y_pos, row['length'])], 
                       (row['plot_position'] - 0.1, 0.25),
@@ -65,9 +85,26 @@ def plot_sleep_stages(csv_file, start_time, end_time):
     ax.axis('off')
     
     plt.tight_layout()
+
+    # Save figure if a path is provided (PNG + PDF).
+    # Default to global path when none is passed in.
+    output_path = save_path or DEFAULT_SAVE_PATH
+    if output_path:
+        fig.savefig(output_path, dpi=600, bbox_inches='tight')
+        if output_path.endswith('.png'):
+            pdf_path = output_path.replace('.png', '.pdf')
+        else:
+            pdf_path = f"{output_path}.pdf"
+        fig.savefig(pdf_path, format='pdf', bbox_inches='tight')
+    
     plt.show()
 
 # Example usage
 start_time = '2024-11-30 11:30:00'
 end_time = '2024-11-30 13:00:00'
-plot_sleep_stages('/Volumes/harris/volkan/sleep_profile/downsample_auto_score/scoring_analysis_consolidated/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz_consolidated.csv', start_time, end_time)
+plot_sleep_stages(
+    '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis_consolidated/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz_consolidated.csv',
+    start_time,
+    end_time,
+    save_path='/Volumes/harris/volkan/sleep-profile/plots/state_bars/state_bars_sub-016_ZT2.5-4.png'
+)
