@@ -116,7 +116,7 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     
     plt.sca(ax1)
     plt.pcolormesh(t, f[mask], power_db,
-                   cmap='viridis',      # Use viridis colormap for spectrogram
+                   cmap='jet',      # Use viridis colormap for spectrogram
                    shading='gouraud',
                    vmin=vmin,
                    vmax=vmax)
