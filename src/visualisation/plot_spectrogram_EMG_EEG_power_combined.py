@@ -85,7 +85,7 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     # Create figure with GridSpec spacer between spectrogram and power plots
     fig = plt.figure(figsize=(16, 5.5))
     gs = fig.add_gridspec(7, 1,
-                          height_ratios=[2, 0.3, 1, 1, 1, 1, 1.2],
+                          height_ratios=[2, 0.9, 1, 1, 1, 1, 1.2],
                           hspace=0.03)
     ax1 = fig.add_subplot(gs[0])
     ax2 = fig.add_subplot(gs[2], sharex=ax1)
@@ -95,9 +95,9 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     ax6 = fig.add_subplot(gs[6], sharex=ax1)
     
     # Set figure margins while preserving the new gap
-    fig.subplots_adjust(left=0.13,
+    fig.subplots_adjust(left=0.15,
                         right=0.98,
-                        top=0.97,
+                        top=0.99,
                         bottom=0.05)
 
     # Spectrogram (top)
@@ -111,8 +111,8 @@ def combined_plot(pickle_path, recording_start_time, segment_start_time, duratio
     # Filter and normalize
     mask = (f >= 1) & (f <= 64)
     power_db = 10 * np.log10(Sxx[mask])
-    vmin = np.percentile(power_db, 0.01)  # More extreme minimum
-    vmax = np.percentile(power_db, 99.99)  # More extreme maximum
+    vmin = np.percentile(power_db, 0.1)  # More extreme minimum
+    vmax = np.percentile(power_db, 99.9)  # More extreme maximum
     
     plt.sca(ax1)
     plt.pcolormesh(t, f[mask], power_db,
