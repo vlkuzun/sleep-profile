@@ -29,8 +29,12 @@ def plot_combined_sleep_data(input_file, output_file):
 
     # Calculate the overall mean and SEM across all subjects for each ZT
     sleep_stages = ['wake_percent_mean', 'non_rem_percent_mean', 'rem_percent_mean']
-    stage_titles = {'wake_percent_mean': 'Wake', 'non_rem_percent_mean': 'Non-REM', 'rem_percent_mean': 'REM'}
-    stage_colors = {'wake_percent_mean': '#E64B35', 'non_rem_percent_mean': '#4DBBD5', 'rem_percent_mean': '#00A087'}
+    stage_titles = {'wake_percent_mean': 'Wake', 'non_rem_percent_mean': 'NREM', 'rem_percent_mean': 'REM'}
+    stage_colors = {
+        'wake_percent_mean': '#E69F00',   # Wake
+        'non_rem_percent_mean': '#56B4E9',  # Non-REM
+        'rem_percent_mean': '#CC79A7'    # REM
+    }
 
     mean_df = df.groupby('ZT').mean(numeric_only=True)[sleep_stages]
     sem_df = df.groupby('ZT').sem(numeric_only=True)[sleep_stages]
@@ -39,19 +43,21 @@ def plot_combined_sleep_data(input_file, output_file):
     subjects = sorted(df['subject'].unique())
     cmap = plt.get_cmap('tab10')
     subject_palette = {subj: cmap(idx % cmap.N) for idx, subj in enumerate(subjects)}
+    line_styles = ['--', ':', '-.', (0, (3, 2))]
 
-    fig, axes = plt.subplots(len(sleep_stages), 1, figsize=(10, 4), sharex=True)
+    fig, axes = plt.subplots(len(sleep_stages), 1, figsize=(14, 8), sharex=True)
 
     for ax, stage in zip(axes, sleep_stages):
         # Plot individual subjects with Matplotlib
-        for subject in subjects:
+        for idx, subject in enumerate(subjects):
             subject_data = df[df['subject'] == subject]
             ax.plot(
                 subject_data['ZT'],
                 subject_data[stage],
                 color=subject_palette[subject],
-                linewidth=1.2,
-                alpha=0.6
+                linewidth=0.8,
+                linestyle=line_styles[idx % len(line_styles)],
+                alpha=0.35
             )
 
         # Overlay mean and SEM for this stage
@@ -65,27 +71,25 @@ def plot_combined_sleep_data(input_file, output_file):
             label='SEM'
         )
 
-        # Shade dark phase (ZT 12-23)
-        ax.axvspan(12, 23, color='gray', alpha=0.15)
-
-        ax.set_ylim(0, 100)
+        ax.set_ylim(-2, 102)
         ax.set_yticks(range(0, 105, 20))
         ax.set_ylabel('Percent (%)')
         ax.set_title(stage_titles[stage])
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-        # Add phase indicator bar at the bottom of each subplot without altering data range
-        bar_height = 0.08  # fraction of axes height
-        blended = transforms.blended_transform_factory(ax.transData, ax.transAxes)
-        ax.add_patch(Rectangle((0, -bar_height), 1, bar_height, transform=blended,
-                       color='#FFD1A1', alpha=0.8, lw=0, clip_on=False))
-        ax.add_patch(Rectangle((1, -bar_height), 11, bar_height, transform=blended,
-                       color='orange', alpha=0.8, lw=0, clip_on=False))
-        ax.add_patch(Rectangle((12, -bar_height), 1, bar_height, transform=blended,
-                       color='#C0C0C0', alpha=0.8, lw=0, clip_on=False))
-        ax.add_patch(Rectangle((13, -bar_height), 10, bar_height, transform=blended,
-                       color='gray', alpha=0.8, lw=0, clip_on=False))
+        # Add phase indicator bar only to the bottom subplot
+        if ax is axes[-1]:
+            bar_height = 0.08  # fraction of axes height
+            blended = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+            ax.add_patch(Rectangle((0, -bar_height), 1, bar_height, transform=blended,
+                           color='#FFD1A1', alpha=0.8, lw=0, clip_on=False))
+            ax.add_patch(Rectangle((1, -bar_height), 11, bar_height, transform=blended,
+                           color='orange', alpha=0.8, lw=0, clip_on=False))
+            ax.add_patch(Rectangle((12, -bar_height), 1, bar_height, transform=blended,
+                           color='#C0C0C0', alpha=0.8, lw=0, clip_on=False))
+            ax.add_patch(Rectangle((13, -bar_height), 10, bar_height, transform=blended,
+                           color='gray', alpha=0.8, lw=0, clip_on=False))
 
         # Ensure x-axis limits align with integer ZT range
         xticks_range = range(int(mean_df.index.min()), int(mean_df.index.max()) + 1)
@@ -95,24 +99,24 @@ def plot_combined_sleep_data(input_file, output_file):
 
     axes[-1].set_xlabel('Zeitgeber time (ZT)')
     axes[-1].set_xticks(sorted(df['ZT'].unique()))
+    axes[-1].tick_params(axis='x', pad=10)
 
-    # Build a shared legend (subjects + mean/SEM)
-    subject_handles = [Line2D([0], [0], color=subject_palette[subj], linewidth=1.5, label=str(subj)) for subj in subjects]
-    fig.legend(
-        handles=subject_handles,
-        loc='upper center',
-        ncol=min(4, len(subject_handles)),
-        frameon=False,
-        bbox_to_anchor=(0.5, 0.99)
-    )
+    # Remove legend to keep focus on mean lines
 
     plt.tight_layout(rect=[0, 0, 1, 0.93])
 
-    # Save / show plot
-    plt.show()  # Preview
-    # plt.savefig(output_file)
-    plt.close()
-    print(f"Plot saved to: {output_file}")
+    # Save before showing to avoid blank exports
+    if output_file:
+        fig.savefig(output_file, dpi=600, bbox_inches='tight')
+        if output_file.endswith('.png'):
+            pdf_path = output_file.replace('.png', '.pdf')
+        else:
+            pdf_path = f"{output_file}.pdf"
+        fig.savefig(pdf_path, format='pdf', bbox_inches='tight')
+        print(f"Plot saved to: {output_file} and {pdf_path}")
+
+    plt.show()
+    plt.close(fig)
 
 # Get input file path and output file path
 input_file = input("Enter the path of the combined CSV file: ")
