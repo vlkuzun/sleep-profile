@@ -1,30 +1,59 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import timedelta
+
+# Match publication styling used by 24 h line plots
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+})
+
+STAGE_CODES = [1, 2, 3]
+STAGE_LABELS = ['Wake', 'NREM', 'REM']
+STAGE_COLORS = ['#E69F00', '#56B4E9', '#CC79A7']
 
 def create_pie_chart(stage_counts, output_path, title):
-    # Define labels and sizes for the pie chart
-    labels = ['Wake', 'NREM', 'REM']
-    sizes = [stage_counts.get(1, 0), stage_counts.get(2, 0), stage_counts.get(3, 0)]
+    sizes = [stage_counts.get(code, 0) for code in STAGE_CODES]
 
-    # Create the pie chart with optimized font sizes
-    plt.figure(figsize=(12, 9))  # Keep original figure size
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, 
-            textprops={'fontsize': 32},  # Increased label font size
-            colors=['#ff9999','#66b3ff','#99ff99'], 
-            wedgeprops={'edgecolor': 'black', 'linewidth': 2.5})
-    
-    # Increase percentage value font size
-    for text in plt.gca().texts:
-        text.set_fontsize(32)  # Unified larger font size for all text elements
-    
-    plt.title(title, fontsize=40, pad=20)  # Larger title font size
-    
-    # Save with higher DPI for better quality
-    plt.savefig(output_path, dpi=600, bbox_inches='tight')
-    plt.close()
-    print(f"Pie chart saved to: {output_path}")
+    fig, ax = plt.subplots(figsize=(6, 6))
+    wedges, texts, autotexts = ax.pie(
+        sizes,
+        labels=STAGE_LABELS,
+        autopct='%1.1f%%',
+        startangle=140,
+        colors=STAGE_COLORS,
+        wedgeprops={'edgecolor': 'white', 'linewidth': 1},
+        textprops={'fontsize': 12, 'color': '#111111'}
+    )
+
+    for txt in texts + autotexts:
+        txt.set_fontsize(12)
+
+    ax.set_title(title, pad=16)
+    ax.axis('equal')
+
+    fig.tight_layout()
+
+    if output_path:
+        fig.savefig(output_path, dpi=600, bbox_inches='tight')
+        if output_path.endswith('.png'):
+            pdf_path = output_path.replace('.png', '.pdf')
+        else:
+            pdf_path = f"{output_path}.pdf"
+        fig.savefig(pdf_path, format='pdf', bbox_inches='tight')
+        print(f"Pie chart saved to: {output_path} and {pdf_path}")
+
+    plt.close(fig)
 
 def aggregate_phases(df):
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
