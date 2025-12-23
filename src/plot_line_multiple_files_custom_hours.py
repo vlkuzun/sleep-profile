@@ -3,8 +3,27 @@ import pandas as pd
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from matplotlib.patches import Rectangle
+import sys
+from pathlib import Path
 
-from scipy.ndimage import gaussian_filter1d
+
+def _ensure_repo_root_on_path():
+    repo_root = Path(__file__).resolve()
+    for parent in repo_root.parents:
+        if (parent / "src" / "stage_colors.py").exists():
+            repo_root = parent
+            break
+    else:
+        repo_root = repo_root.parent
+
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.append(repo_root_str)
+
+
+_ensure_repo_root_on_path()
+
+from src.stage_colors import get_stage_color
 
 def plot_sleep_stages(files, subjects):
     """
@@ -21,11 +40,17 @@ def plot_sleep_stages(files, subjects):
     if not isinstance(subjects, list) or len(subjects) != len(files):
         raise ValueError("Please provide a list of subject names matching the number of files.")
 
+    stage_name_by_column = {
+        'wake_percent': 'Wake',
+        'non_rem_percent': 'NREM',
+        'rem_percent': 'REM',
+    }
+    stage_columns = list(stage_name_by_column.keys())
+
     # Define consistent colors for each sleep stage
     colors = {
-        'wake_percent': 'red',
-        'non_rem_percent': 'blue',
-        'rem_percent': 'green',
+        column: get_stage_color(stage_name_by_column[column])
+        for column in stage_columns
     }
 
     # Define line styles for different files
@@ -53,7 +78,7 @@ def plot_sleep_stages(files, subjects):
             continue
 
         # Check if required columns exist
-        required_columns = ['ZT', 'wake_percent', 'non_rem_percent', 'rem_percent']
+        required_columns = ['ZT', *stage_columns]
         if not all(col in data.columns for col in required_columns):
             print(f"File {file} is missing required columns.")
             continue
@@ -80,7 +105,7 @@ def plot_sleep_stages(files, subjects):
         # Smooth the data with Gaussian filter (sigma=1)
         smoothed_data = {
             stage: gaussian_filter1d(data[stage], sigma=1)
-            for stage in ['wake_percent', 'non_rem_percent', 'rem_percent']
+            for stage in stage_columns
         }
 
         # Identify gaps in the ZT sequence and insert NaN
@@ -91,7 +116,7 @@ def plot_sleep_stages(files, subjects):
                 adjusted.append(np.nan)
             adjusted.append(data['ZT_Adjusted'].iloc[i])
 
-        for stage in ['wake_percent', 'non_rem_percent', 'rem_percent']:
+        for stage in stage_columns:
             values = smoothed_data[stage].tolist()
             adjusted_values = [values[0]]
             for i in range(1, len(values)):

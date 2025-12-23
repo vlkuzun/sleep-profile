@@ -1,6 +1,26 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
+from pathlib import Path
 
+
+def _ensure_repo_root_on_path():
+    repo_root = Path(__file__).resolve()
+    for parent in repo_root.parents:
+        if (parent / "src" / "stage_colors.py").exists():
+            repo_root = parent
+            break
+    else:
+        repo_root = repo_root.parent
+
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.append(repo_root_str)
+
+
+_ensure_repo_root_on_path()
+
+from src.stage_colors import get_stage_color
 # File: /Users/Volkan/Repos/sleep-profile/src/plot_bar_state_rows.py
 
 # Default output location for saved plots
@@ -58,10 +78,10 @@ def plot_sleep_stages(csv_file, start_time, end_time, save_path=None):
     # Plot with compressed y-axis spacing
     fig, ax = plt.subplots(figsize=(16, 1))
     colors = {
-        1: '#E69F00',   # Golden yellow for WAKE
-        1.5: '#D55E00', # Red hue for microarousals
-        2: '#56B4E9',   # Sky blue for non-REM
-        3: '#CC79A7',   # Pink/magenta for REM
+        1: get_stage_color('Wake'),
+        1.5: '#D55E00',  # Microarousals keep a distinct color
+        2: get_stage_color('NREM'),
+        3: get_stage_color('REM'),
     }
     y_pos = 0
     total_length = 0

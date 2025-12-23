@@ -1,6 +1,28 @@
 import os
+import sys
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
+
+
+def _ensure_repo_root_on_path():
+    repo_root = Path(__file__).resolve()
+    for parent in repo_root.parents:
+        if (parent / "src" / "stage_colors.py").exists():
+            repo_root = parent
+            break
+    else:
+        repo_root = repo_root.parent
+
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.append(repo_root_str)
+
+
+_ensure_repo_root_on_path()
+
+from src.stage_colors import get_stage_palette
 
 # Match publication styling used by 24 h line plots
 plt.rcParams.update({
@@ -20,7 +42,7 @@ plt.rcParams.update({
 
 STAGE_CODES = [1, 2, 3]
 STAGE_LABELS = ['Wake', 'NREM', 'REM']
-STAGE_COLORS = ['#E69F00', '#56B4E9', '#CC79A7']
+STAGE_PALETTE = get_stage_palette(STAGE_LABELS)
 
 def create_pie_chart(stage_counts, output_path, title):
     sizes = [stage_counts.get(code, 0) for code in STAGE_CODES]
@@ -31,7 +53,7 @@ def create_pie_chart(stage_counts, output_path, title):
         labels=STAGE_LABELS,
         autopct='%1.1f%%',
         startangle=140,
-        colors=STAGE_COLORS,
+        colors=STAGE_PALETTE,
         wedgeprops={'edgecolor': 'white', 'linewidth': 1},
         textprops={'fontsize': 12, 'color': '#111111'}
     )

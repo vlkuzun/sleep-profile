@@ -2,7 +2,28 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
+import sys
+from pathlib import Path
 from neurodsp.spectral import compute_spectrum
+
+
+def _ensure_repo_root_on_path():
+    repo_root = Path(__file__).resolve()
+    for parent in repo_root.parents:
+        if (parent / "src" / "stage_colors.py").exists():
+            repo_root = parent
+            break
+    else:
+        repo_root = repo_root.parent
+
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.append(repo_root_str)
+
+
+_ensure_repo_root_on_path()
+
+from src.stage_colors import get_stage_color
 
 def plot_average_power_spectra(eeg_files, stage_files, channel, sampling_rate=512, output_file=None):
     """
@@ -19,7 +40,7 @@ def plot_average_power_spectra(eeg_files, stage_files, channel, sampling_rate=51
         raise ValueError("The number of EEG files and stage files must match.")
 
     stage_mapping = {1: 'Wake', 2: 'NREM', 3: 'REM'}
-    stage_colors = {'Wake': 'red', 'NREM': 'blue', 'REM': 'green'}
+    stage_colors = {stage: get_stage_color(stage) for stage in stage_mapping.values()}
     all_spectra = {stage: [] for stage in stage_mapping.values()}
 
     for eeg_file, stage_file in zip(eeg_files, stage_files):

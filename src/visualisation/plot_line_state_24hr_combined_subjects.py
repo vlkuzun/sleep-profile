@@ -2,7 +2,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib import transforms
+import sys
+from pathlib import Path
 
+
+def _ensure_repo_root_on_path():
+    repo_root = Path(__file__).resolve()
+    for parent in repo_root.parents:
+        if (parent / "src" / "stage_colors.py").exists():
+            repo_root = parent
+            break
+    else:
+        repo_root = repo_root.parent
+
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.append(repo_root_str)
+
+
+_ensure_repo_root_on_path()
+
+from src.stage_colors import get_stage_color
 # Match global publication style with individual plot
 plt.rcParams.update({
     'font.family': 'Arial',
@@ -29,9 +49,9 @@ def plot_combined_sleep_data(input_file, output_file):
     sleep_stages = ['wake_percent_mean', 'non_rem_percent_mean', 'rem_percent_mean']
     stage_titles = {'wake_percent_mean': 'Wake', 'non_rem_percent_mean': 'NREM', 'rem_percent_mean': 'REM'}
     stage_colors = {
-        'wake_percent_mean': '#E69F00',
-        'non_rem_percent_mean': '#56B4E9',
-        'rem_percent_mean': '#CC79A7'
+        'wake_percent_mean': get_stage_color('Wake'),
+        'non_rem_percent_mean': get_stage_color('NREM'),
+        'rem_percent_mean': get_stage_color('REM'),
     }
 
     mean_df = df.groupby('ZT').mean(numeric_only=True)[sleep_stages]
