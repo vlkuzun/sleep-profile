@@ -2,25 +2,43 @@ import pandas as pd
 import glob
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
+import re
+from pathlib import Path
 from scipy.stats import kruskal
 from scikit_posthocs import posthoc_dunn
 
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+})
+
 # List of CSV file paths
-csv_files = glob.glob('Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/*.csv')
+csv_files = glob.glob('/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/*.csv')
 
 # Dictionary to store results
 results = {}
-
-# Initialize a list to hold the subject labels
-subject_labels = []
 
 # Define conditions
 conditions = ['Wake Light', 'Wake Dark', 'NREM Light', 'NREM Dark', 'REM Light', 'REM Dark']
 
 for file in csv_files:
-    # Prompt for which subject this CSV file corresponds to
-    subject_name = input(f"Enter the subject name for the file {file}: ")
+    # Determine subject name from file path (e.g., sub-007)
+    subject_match = re.search(r"sub-(\d+)", file, re.IGNORECASE)
+    if subject_match:
+        subject_id = subject_match.group(1)
+        subject_name = f"sub-{subject_id}"
+    else:
+        subject_name = Path(file).stem
 
     # Load the CSV file
     df = pd.read_csv(file)
@@ -69,9 +87,6 @@ for file in csv_files:
         'light_dark_avg_duration_stages': light_dark_avg_duration_stages,
     }
 
-    # Add the subject name to the labels for later plotting
-    subject_labels.extend([subject_name] * len(bout_durations))
-
 # Prepare data for plotting
 stripplot_data = {cond: [] for cond in conditions}
 subject_labels_plot = []  # List for subject labels corresponding to the plot
@@ -92,21 +107,27 @@ for time_period, sleep_stage in [('Light', 'Wake'), ('Dark', 'Wake'),
             stripplot_data[condition].append(np.nan)
             subject_labels_plot.append(subject_name)
 
-# Convert subject labels and data to a DataFrame for seaborn to handle the hue
+# Convert subject labels and data to a DataFrame for plotting
 plot_data = pd.DataFrame({
     'Condition': [cond for cond in conditions for _ in range(len(results))],
     'MeanBoutDuration': [item for sublist in stripplot_data.values() for item in sublist],
     'Subject': subject_labels_plot
 })
 
-# Ask the user to define colors for each subject
-subject_palette = {}
-for subject in plot_data['Subject'].unique():
-    color = input(f"Enter a color for subject '{subject}': ")
-    subject_palette[subject] = color
+# Prepare consistent subject colors matching other figures
+def _subject_sort_key(subject_label):
+    match = re.search(r"\d+", str(subject_label))
+    return int(match.group()) if match else float('inf')
+
+subjects = sorted(plot_data['Subject'].dropna().unique(), key=_subject_sort_key)
+cmap = plt.get_cmap('tab10')
+subject_palette = {subj: cmap(idx % cmap.N) for idx, subj in enumerate(subjects)}
+
+# Remove rows without data for statistical tests and plotting
+plot_data_clean = plot_data.dropna(subset=['MeanBoutDuration'])
 
 # Kruskal-Wallis test (non-parametric ANOVA alternative)
-anova_data = plot_data[['Condition', 'MeanBoutDuration']]
+anova_data = plot_data_clean[['Condition', 'MeanBoutDuration']]
 
 # Kruskal-Wallis test for each condition
 grouped_data = [anova_data[anova_data['Condition'] == cond]['MeanBoutDuration'] for cond in conditions]
@@ -132,17 +153,24 @@ if kruskal_result.pvalue < 0.05:
 # Plot
 plt.figure(figsize=(10, 6))
 
-# Create stripplot with 'hue' for different subjects, using the user-defined color map
-sns.stripplot(x='Condition', y='MeanBoutDuration', data=plot_data, jitter=0.2, hue='Subject', palette=subject_palette, alpha=0.5, size=10, legend=False)
+condition_positions = {cond: idx for idx, cond in enumerate(conditions)}
+rng = np.random.default_rng(seed=42)
+
+# Plot individual subject data with jitter per condition
+for subject in plot_data_clean['Subject'].unique():
+    subject_data = plot_data_clean[plot_data_clean['Subject'] == subject]
+    x_vals = [condition_positions[cond] + rng.uniform(-0.15, 0.15) for cond in subject_data['Condition']]
+    y_vals = subject_data['MeanBoutDuration'].values
+    plt.scatter(x_vals, y_vals, color=subject_palette.get(subject, '#000000'), alpha=0.6, s=80)
 
 # Plot mean as a horizontal line for each condition
 for i, cond in enumerate(conditions):
-    condition_data = plot_data[plot_data['Condition'] == cond]
+    condition_data = plot_data_clean[plot_data_clean['Condition'] == cond]
     condition_mean = condition_data['MeanBoutDuration'].mean()
     plt.hlines(condition_mean, i - 0.2, i + 0.2, color='black', linestyle='-', linewidth=2)
 
 # Set initial offset above the y_max for the first comparison
-y_max = plot_data['MeanBoutDuration'].max()
+y_max = plot_data_clean['MeanBoutDuration'].max()
 comparison_offset = y_max + 30  # Space above the maximum value of the y-axis for the first comparison
 
 # Track comparisons to avoid duplicating
@@ -170,16 +198,21 @@ for comparison in significant_comparisons:
         comparison_offset += 40  # Increase the gap for the next comparison
 
 # Customize plot
-plt.xticks(rotation=45, fontsize=20)
+plt.xticks(range(len(conditions)), conditions, rotation=45, fontsize=20)
 plt.ylabel('Bout Duration (seconds)', fontsize=20)
 plt.xlabel('')
 plt.ylim(0, 650)  # Set y-axis range
 plt.yticks(np.arange(0, 651, 200), fontsize=20)  # Reduced number of ticks, increased font
 
 # Remove top and right spines
-sns.despine(top=True, right=True)
+ax = plt.gca()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
 
 plt.grid(axis='y', linestyle='--', alpha=0) # Hide grid
 plt.tight_layout()
-plt.savefig("Z:/volkan/sleep_profile/plots/bout_duration/bout_duration_grouped_comparison.png", dpi=600)
+output_png = "/Volumes/harris/volkan/sleep-profile/plots/bout_duration/bout_duration_grouped_comparison.png"
+plt.savefig(output_png, dpi=600)
+output_pdf = output_png[:-4] + '.pdf'
+plt.savefig(output_pdf, dpi=600)
 plt.show()
