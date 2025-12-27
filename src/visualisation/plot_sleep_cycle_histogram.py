@@ -3,6 +3,21 @@ import matplotlib.pyplot as plt
 from datetime import timedelta
 import glob
 
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+})
+
 def analyze_sleep_cycles(file_path):
     """
     Analyze sleep cycles from a single CSV file.
@@ -84,27 +99,28 @@ def plot_histogram(cycles_data, save_path=None):
     """
     plt.figure(figsize=(10, 6))
     plt.hist(cycles_data['cycle_length'], bins=30, edgecolor='black', alpha=0.7)
-    plt.xlabel('Cycle Length (minutes)', fontsize=26)
-    plt.ylabel('Number of Cycles', fontsize=26)
-    plt.tick_params(axis='y', labelsize=26)
-    plt.tick_params(axis='x', labelsize=26)
-    # Remove top and right spines
+    plt.xlabel('Cycle Length (minutes)', fontsize=20)
+    plt.ylabel('Number of Cycles', fontsize=20)
+    plt.tick_params(axis='x', labelsize=18)
+    plt.tick_params(axis='y', labelsize=18)
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     
     if save_path:
         plt.savefig(save_path, dpi=600, bbox_inches='tight')
-        print(f"Figure saved to {save_path}")
+        pdf_path = save_path[:-4] + '.pdf' if save_path.lower().endswith('.png') else f"{save_path}.pdf"
+        plt.savefig(pdf_path, dpi=600, bbox_inches='tight')
+        print(f"Figure saved to {save_path} and {pdf_path}")
     
     plt.show()
 
 # Example usage:
-folder_path = "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis"
+folder_path = "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis"
 all_cycles = process_multiple_files(folder_path)
 
 # Plot histogram
-output_path = "Z:/volkan/sleep_profile/plots/sleep_cycle/cycle_length_histogram_all_sub.png"
+output_path = "/Volumes/harris/volkan/sleep-profile/plots/sleep_cycle/cycle_length_histogram_all_sub.png"
 plot_histogram(all_cycles, save_path=output_path)
 
 # Print average cycle length
