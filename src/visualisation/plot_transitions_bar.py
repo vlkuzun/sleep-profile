@@ -2,6 +2,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+})
+
 def plot_sleep_transitions_multiple(files, output_dir=None, dpi=600):
     # Initialize a dictionary to count the transitions across all files
     transitions = {
@@ -54,11 +69,11 @@ def plot_sleep_transitions_multiple(files, output_dir=None, dpi=600):
     transition_data = transition_data[::-1]
     
     # Plotting
-    plt.figure(figsize=(12, 6))
-    bars = plt.barh(transition_labels, transition_data, color='#1f77b4', edgecolor='black', height=0.9)  # Adjust height to make bars closer
-    plt.xlabel('Percentage of Total Transitions', fontsize=24)
-    plt.tick_params(axis='y', labelsize=24)
-    plt.tick_params(axis='x', labelsize=24)
+    plt.figure(figsize=(10, 6))
+    bars = plt.barh(transition_labels, transition_data, color='#1f77b4', edgecolor='black', height=0.9)
+    plt.xlabel('Percentage of Total Transitions', fontsize=20)
+    plt.tick_params(axis='y', labelsize=18)
+    plt.tick_params(axis='x', labelsize=18)
     # Remove top and right spines
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
@@ -73,17 +88,19 @@ def plot_sleep_transitions_multiple(files, output_dir=None, dpi=600):
     
     output_path = os.path.join(output_dir, 'transitions_bar_combined_sub.png')
     plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
-    print(f"Figure saved to {output_path} with DPI={dpi}")
+    pdf_path = output_path[:-4] + '.pdf'
+    plt.savefig(pdf_path, dpi=dpi, bbox_inches='tight')
+    print(f"Figure saved to {output_path} and {pdf_path} with DPI={dpi}")
     plt.close()
 
 # Example usage:
-files = ['Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-007_ses-01_recording-01_time-0-70.5h_1Hz.csv', 
-         'Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-010_ses-01_recording-01_time-0-69h_1Hz.csv', 
-         'Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-011_ses-01_recording-01_time-0-72h_1Hz.csv',
-         'Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-015_ses-01_recording-01_time-0-49h_1Hz_stitched.csv',
-         'Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz.csv', 
-         'Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-017_ses-01_recording-01_time-0-98h_1Hz.csv']
+files = ['/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-007_ses-01_recording-01_time-0-70.5h_1Hz.csv', 
+         '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-010_ses-01_recording-01_time-0-69h_1Hz.csv', 
+         '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-011_ses-01_recording-01_time-0-72h_1Hz.csv',
+         '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-015_ses-01_recording-01_time-0-49h_1Hz_stitched.csv',
+         '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz.csv', 
+         '/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-017_ses-01_recording-01_time-0-98h_1Hz.csv']
 
 # Specify output directory (optional) or use default current directory
-output_dir = 'Z:/volkan/sleep_profile/plots/transitions'  # Change this to your desired output directory
+output_dir = '/Volumes/harris/volkan/sleep-profile/plots/transitions'
 plot_sleep_transitions_multiple(files, output_dir=output_dir, dpi=600)
