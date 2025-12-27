@@ -1,23 +1,40 @@
 import csv
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 from scipy.stats import sem
 from statsmodels.stats.anova import AnovaRM
 from statsmodels.stats.multicomp import MultiComparison
-from statsmodels.formula.api import ols
-import statsmodels.api as sm
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import re
 
-# Set default font sizes globally before creating any plots
+# Shared plotting style
 plt.rcParams.update({
-    'font.size': 36,
-    'axes.labelsize': 48,
-    'axes.titlesize': 52,
-    'xtick.labelsize': 44,
-    'ytick.labelsize': 44,
-    'legend.fontsize': 40,
+    'font.family': 'Arial',
+    'font.size': 10,
+    'axes.labelsize': 12,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 300,
+    'savefig.dpi': 600,
+    'axes.linewidth': 1,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
 })
+
+
+def _subject_sort_key(label):
+    match = re.search(r"\d+", str(label))
+    return int(match.group()) if match else float('inf')
+
+
+def _normalize_subject_label(label):
+    match = re.search(r"\d+", str(label))
+    if match:
+        return f"sub-{match.group().zfill(3)}"
+    return str(label)
 
 def calculate_bout_durations_from_csv(file_path):
     """
@@ -90,8 +107,13 @@ def analyze_relationship_with_bar_charts_and_repeated_measures_anova(bout_data, 
     Perform repeated measures ANOVA and post-hoc tests for each sleep stage.
     """
     # Mapping sleep stages to names
-    sleep_stage_map = {1: 'Wake', 2: 'NREM', 3: 'REM'}  # Changed 'Awake' to 'Wake'
-    
+    sleep_stage_map = {1: 'Wake', 2: 'NREM', 3: 'REM'}
+
+    normalized_subjects = [_normalize_subject_label(label) for label in subject_labels]
+    ordered_subjects = sorted(normalized_subjects, key=_subject_sort_key)
+    cmap = plt.get_cmap('tab10')
+    subject_palette = {subject: cmap(idx % cmap.N) for idx, subject in enumerate(ordered_subjects)}
+
     sleep_stages = sorted(set(bout['sleepStage'] for subject_data in bout_data for bout in subject_data))
 
     # Group ZT into 3-hour blocks
@@ -111,7 +133,7 @@ def analyze_relationship_with_bar_charts_and_repeated_measures_anova(bout_data, 
             stage_data = [bout for bout in subject_data if bout['sleepStage'] == stage]
             zt_blocks.extend(zt_to_block(bout['ZT']) for bout in stage_data)
             durations.extend(bout['Duration'] for bout in stage_data)
-            subjects.extend([subject_labels[idx]] * len(stage_data))
+            subjects.extend([normalized_subjects[idx]] * len(stage_data))
 
         # Create a DataFrame for analysis
         plot_data = pd.DataFrame({
@@ -128,47 +150,49 @@ def analyze_relationship_with_bar_charts_and_repeated_measures_anova(bout_data, 
         summary_data = plot_data.groupby('ZT Block')['Duration'].agg(['mean', sem]).reindex(all_blocks, fill_value=0)
         summary_data['ZT Block'] = summary_data.index
 
-        plt.figure(figsize=(16, 10))
-        colors = ['orange'] * 4 + ['grey'] * 4
-        plt.bar(summary_data['ZT Block'], summary_data['mean'], color=colors, width=2.5, align='center', label='Mean Duration')
+        fig, ax = plt.subplots(figsize=(10, 6))
+        light_color = '#FFD1A1'
+        dark_color = '#C0C0C0'
+        colors = [light_color if block < 12 else dark_color for block in all_blocks]
+        ax.bar(summary_data['ZT Block'], summary_data['mean'], color=colors, width=2.5, align='center')
 
         # Plot mean for each subject (use a line or different markers)
-        subject_colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown']  # New color order
         for idx, subject_data in enumerate(bout_data):
             subject_stage_data = [bout for bout in subject_data if bout['sleepStage'] == stage]
             subject_zt_blocks = [zt_to_block(bout['ZT']) for bout in subject_stage_data]
             subject_durations = [bout['Duration'] for bout in subject_stage_data]
+            subject_label = normalized_subjects[idx]
 
             # Calculate the mean for each subject per ZT block
             subject_means = [np.mean([d for z, d in zip(subject_zt_blocks, subject_durations) if z == block]) for block in all_blocks]
 
             # Plot mean for each subject with specified colors
-            plt.plot(all_blocks, subject_means, marker='o', linestyle='-', alpha=0.5, color=subject_colors[idx])
+            ax.plot(all_blocks, subject_means, marker='o', linestyle='-', alpha=0.5, color=subject_palette[subject_label], linewidth=1.2, markersize=4)
 
         # Title and labels
-        plt.title(f'{stage_name}', fontsize=52, pad=40)
-        plt.xlabel('ZT Block (hours)', fontsize=46)
-        plt.ylabel('Bout Duration (seconds)', fontsize=46)
+        ax.set_title(stage_name, fontsize=22, pad=20)
+        ax.set_xlabel('Zeitgeber time (ZT)', fontsize=20)
+        ax.set_ylabel('Bout Duration (seconds)', fontsize=20)
+        xtick_positions = np.arange(0, 24, 3)
+        ax.set_xticks(xtick_positions)
+        ax.set_xticklabels([f'{i}-{i+3}' for i in xtick_positions], rotation=15)
+        ax.tick_params(axis='x', labelsize=18)
+        ax.tick_params(axis='y', labelsize=18)
 
-        plt.xticks(ticks=np.arange(0, 24, 3), labels=[f'{i}-{i+3}' for i in range(0, 24, 3)], fontsize=44, rotation=45)
-        plt.tick_params(axis='y', labelsize=44)
-
-        # Add specific y-ticks for NREM state
         if stage_name == 'NREM':
-            plt.yticks(np.linspace(0, 210, 4))  # Creates 4 ticks from 0 to 150
+            ax.set_yticks(np.linspace(0, 210, 4))
 
-        # Remove top and right spines
-        ax = plt.gca()
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+        ax.grid(False)
 
-        # Adjust bottom margin to prevent x-label trimming
-        plt.subplots_adjust(bottom=0.2)
-        
-        # Show the plot without the legend
         plt.tight_layout()
-        plt.savefig(f'Z:/volkan/sleep_profile/plots/bout_duration/bout_duration_across_ZT_{stage_name}.png', dpi=600, bbox_inches='tight')
+        output_png = f'/Volumes/harris/volkan/sleep-profile/plots/bout_duration/bout_duration_across_ZT_{stage_name}.png'
+        fig.savefig(output_png, dpi=600, bbox_inches='tight')
+        output_pdf = output_png[:-4] + '.pdf'
+        fig.savefig(output_pdf, dpi=600, bbox_inches='tight')
         plt.show()
+        plt.close(fig)
 
         # Repeated measures ANOVA
         melted_data = grouped_data.reset_index().melt(id_vars='Subject', var_name='ZT_Block', value_name='Duration')
@@ -187,14 +211,14 @@ def analyze_relationship_with_bar_charts_and_repeated_measures_anova(bout_data, 
 
 # Example usage:
 file_paths = [
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-007_ses-01_recording-01_time-0-70.5h_1Hz.csv",
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-010_ses-01_recording-01_time-0-69h_1Hz.csv",
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-011_ses-01_recording-01_time-0-72h_1Hz.csv",
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-015_ses-01_recording-01_time-0-49h_1Hz_stitched.csv",
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz.csv",
-    "Z:/volkan/sleep_profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-017_ses-01_recording-01_time-0-98h_1Hz.csv"    
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-007_ses-01_recording-01_time-0-70.5h_1Hz.csv",
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-010_ses-01_recording-01_time-0-69h_1Hz.csv",
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-011_ses-01_recording-01_time-0-72h_1Hz.csv",
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-015_ses-01_recording-01_time-0-49h_1Hz_stitched.csv",
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-016_ses-02_recording-01_time-0-91h_1Hz.csv",
+    "/Volumes/harris/volkan/sleep-profile/downsample_auto_score/scoring_analysis/automated_state_annotationoutput_sub-017_ses-01_recording-01_time-0-98h_1Hz.csv"    
 ]  # Add more file paths as needed
-subject_labels = ["007", "010", "011", "015", "016", "017"]  # Replace with subject identifiers
+subject_labels = ["sub-007", "sub-010", "sub-011", "sub-015", "sub-016", "sub-017"]
 
 all_bout_data = [calculate_bout_durations_from_csv(file_path) for file_path in file_paths]
 analyze_relationship_with_bar_charts_and_repeated_measures_anova(all_bout_data, subject_labels)
